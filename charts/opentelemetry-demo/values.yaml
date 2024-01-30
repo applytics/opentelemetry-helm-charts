@@ -606,6 +606,11 @@ opentelemetry-collector:
       containerPort: 9464
       servicePort: 9464
       protocol: TCP
+    collector:
+      enabled: true
+      containerPort: 9465
+      servicePort: 9465
+      protocol: TCP
   podAnnotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "9464"
@@ -631,6 +636,14 @@ opentelemetry-collector:
       # Create an exporter to Prometheus (metrics)
       otlphttp/prometheus:
         endpoint: 'http://{{ include "otel-demo.name" . }}-prometheus-server:9090/api/v1/otlp'
+        tls:
+          insecure: true
+      otlp/traces:
+        endpoint: "traces-prepper-headless.opensearch:21890"
+        tls:
+          insecure: true
+      otlp/logs:
+        endpoint: "logs-prepper-headless.opensearch:21892"
         tls:
           insecure: true
 
@@ -667,11 +680,14 @@ opentelemetry-collector:
       pipelines:
         traces:
           processors: [memory_limiter, resource, batch]
-          exporters: [otlp, debug, spanmetrics]
+          exporters: [otlp, otlp/traces, debug, spanmetrics]
         metrics:
           receivers: [otlp, spanmetrics]
           processors: [memory_limiter, filter/ottl, transform, resource, batch]
           exporters: [otlphttp/prometheus, debug]
+        logs:
+          processors: [batch]
+          exporters: [otlp/logs, debug]
 
 jaeger:
   enabled: true
@@ -728,7 +744,20 @@ prometheus:
 
   serverFiles:
     prometheus.yml:
-      scrape_configs: []
+      scrape_configs:
+        - job_name: 'prometheus'
+          scrape_interval: 5s
+          static_configs:
+            - targets:
+                # - "{{ include \"otel-demo.name\" . }}-otelcol:9464"
+                - "otel-demo-otelcol:9464"
+                # - "{{ include \"otel-demo.name\" . }}-otelcol:9465"
+                - "otel-demo-otelcol:9465"
+      remote_write:
+        - url: https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom/push
+          basic_auth:
+            username: 1249815
+            password: glc_eyJvIjoiOTcyNjYxIiwibiI6InN0YWNrLTc3MDk1Ny1obS13cml0ZS13cml0ZS10b2tlbiIsImsiOiJNNWxXYzFxRUI5STlORDVtOTcwOTlxaWkiLCJtIjp7InIiOiJwcm9kLWV1LXdlc3QtMiJ9fQ==
 
 grafana:
   enabled: true

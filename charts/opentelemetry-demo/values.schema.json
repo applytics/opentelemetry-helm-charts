@@ -111,6 +111,14 @@
         },
         "redis": {
           "$ref": "#/definitions/Component"
+        },
+        "nginxProxyManager": {
+          "$ref": "#/definitions/Component"
+        }
+      },
+      "patternProperties": {
+        "^example-.*$": {
+          "$ref": "#/definitions/Component"
         }
       },
       "title": "Components"
